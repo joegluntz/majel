@@ -20,7 +20,7 @@ Facebook: https://www.facebook.com/majeldiscordbot
 
 Support this project: https://www.patreon.com/majeldiscordbot
 
-# Majel - Star Trek Adventures Bot Command List
+# 2D20 Command List
 
 > Note - "/" prefix is also supported depending which bot is added to your server.
 
@@ -30,11 +30,25 @@ Support this project: https://www.patreon.com/majeldiscordbot
 
 `!about` - Information on development and source code.
 
+**Supported Games**
+
+`!game` If a game is not set, then you will receive a warning and a list of supported games.
+
+`!game [Game Code]` If the code is supported then the game will be set. Otherwise you will receive a warning and a list of supported.
+
+`!game list` List the supported games.
+
+`!game help` List of the supported custom commands. These are custom dice rolls such as hit locations in Fallout.
+
+**D6 Rolls**
+
 ![d6 Rolls](https://i.imgur.com/DOaORZP.png "d6 Rolls")
 
 `!d6` - Roll a challenge die.
 
 `!Xd6` - Roll X challenge dice (e.g. Roll 5 d6 = !5d6). X can be left blank, defaults to 1.
+
+**D20 Rolls**
 
 ![d20 Rolls](https://i.imgur.com/BliWREK.png "d20 Rolls")
 
@@ -47,44 +61,6 @@ Support this project: https://www.patreon.com/majeldiscordbot
 `!Xd20` [Target][crit range] - Roll x d20s with a target number and crit range (e.g. Roll 2 d20 with target number of 15 with crit range to 5 = !2d20 15 5). X can be left blank, defaults to 1.
 
 `!Xd20` [Target][crit range] [Complication Range] - Roll x d20s with a target number, crit range, and complication range (e.g. Roll 2 d20 with target number of 15 with crit range to 5 and comp range to 17 = !2d20 15 5 17). X can be left blank, defaults to 1.
-
-![Generate technobabble](https://i.imgur.com/ZjEKeUc.jpg "Generate technobabble")
-
-`!babble` - Generate a random techno babble phrase and DM the user.
-
-`!medbabble` - Generate a random medical babble phrase and DM the user.
-
-![Generate a random support character](https://i.imgur.com/66gHBEU.png "Generate a random support character")
-
-`!support` - Generate a random support character. Use `!support help`for more details.
-
-![Generate a random alien](https://i.imgur.com/kuuDYnj.jpg "Generate a random alien")
-
-`!alien` - Generate a random alien species.
-
-**Reference for player characters (PC)**
-
-`!pc actions` - The actions the PC can perform.
-
-`!pc action minor actions` - The minor actions the PC can perform.
-
-`!pc [action or minor action]` - Details of a PC action or minor action by name. See `!pc actions` or `!pc minor actions`.
-
-`!pc attack properties` - Attack properties of a PC attack.
-
-`!determination` - Determination spend table.
-
-`!momentum` - Momentum spend table.
-
-**Reference for ship characters**
-
-`!ship actions` - Lists the stations and the name of the actions that can be performed at that station.
-
-`!ship minor actions` - The minor actions the PC can perform.
-
-`!ship [action or minor action or station]` - Details of a ship action by name. See `!ship actions` or `!ship minor actions` for possible actions.
-
-`!ship attack properties` - Attack properties of a ship attack.
 
 **Momemtum and Threat Pools**
 
@@ -205,10 +181,4 @@ You can also deploy to AWS free tier, which is my current solution.
 
 Special thanks to my discord rp group.
 
-- Michael D.
-- Daniel Z.
-- Danyal
-- Euan
-- Adam
-- Simon B.
-- Kyle
+- Michael D. and the crew of U.S.S. Pioneer

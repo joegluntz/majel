@@ -19,28 +19,41 @@
  * IN THE SOFTWARE.
  */
 
-const alienGenerator = require("./alienGenerator")
 const dice = require("./dice")
-const referenceSheets = require("./referenceSheets")
-
-referenceSheets.loadReferenceSheets()
+const utils = require("./utils")
+const config = require("./config")
+const { getGuildData } = require("./redis")
 
 module.exports = {
-  //   goldendelicious d6 Roll Result:
+  // <@goldendelicious> d6 Roll Result:
   // (2, 4, 4) = 2 with 0 fx
-  buildD6Msg(cmd, msg) {
+  async buildD6Msg(cmd, msg) {
+    const guildId = msg.guild.id.toString()
+    const guildData = await getGuildData(guildId)
+    if (!guildData.game) {
+      msg.channel.send({ embed: {
+        title: "Game not set!",
+        description: "Please use !game to see the possible options then use !game [GAME] to set the game."
+      } })
+
+      return
+    }
+
     let numDice = cmd.replace("d6", "")
     if (numDice === "") {
       numDice = "1"
     }
     numDice = parseInt(numDice)
+
     const { rawResult, numericResult, fxResult } = dice.rollD6(numDice)
+    const game = config[guildData.game]
+    console.warn(game)
 
     const embed = {
       title: msg.author.username,
       description: "d6 Roll Result",
       thumbnail: {
-        url: "https://i.imgur.com/gN5LDfH.png",
+        url: game.images.d6,
       },
       fields: [
         {
@@ -49,12 +62,12 @@ module.exports = {
           inline: true,
         },
         {
-          name: "Numeric Result",
+          name: "Total Damage",
           value: numericResult,
           inline: true,
         },
         {
-          name: "FX Result",
+          name: "Total Effects Triggered",
           value: fxResult,
           inline: true,
         },
@@ -65,16 +78,27 @@ module.exports = {
     msg.channel.send({ embed })
   },
 
-  //   <@goldendelicious> d20 Roll Result:
+  // <@goldendelicious> d20 Roll Result:
   // Target = 20, Critical range = 1, Complication range = 20
   // (9, 20) = 2 success / 1 complication
-  buildD20msg(cmd, args, msg) {
+  async buildD20msg(cmd, args, msg) {
+    const guildId = msg.guild.id.toString()
+    const guildData = await getGuildData(guildId)
+    if (!guildData.game) {
+      msg.channel.send({ embed: {
+        title: "Game not set!",
+        description: "Please use !game to see the possible options then use !game [GAME] to set the game."
+      } })
+
+      return
+    }
+
     let numDice = cmd.replace("d20", "")
     if (numDice === "") {
       numDice = "1"
     }
     numDice = parseInt(numDice)
-
+    const game = config[guildData.game]
     const {
       target,
       critRange,
@@ -88,7 +112,7 @@ module.exports = {
       title: msg.author.username,
       description: "d20 Roll Result",
       thumbnail: {
-        url: "https://i.imgur.com/sBWwCxI.png",
+        url: game.images.d20,
       },
       fields: [
         {
@@ -126,177 +150,44 @@ module.exports = {
 
     msg.channel.send({ embed })
   },
+  async buildCustomRollMsg(cmd, args, msg) {
+    const guildId = msg.guild.id.toString()
+    const guildData = await getGuildData(guildId)
+    if (!guildData.game) {
+      msg.channel.send({ embed: {
+        title: "Game not set!",
+        description: "Please use !game to see the possible options then use !game [GAME] to set the game."
+      } })
 
-  buildPCMsg(option) {
-    const embed = {
-      title: "",
-      fields: [],
+      return
     }
 
-    if (option === "minor actions") {
-      embed.title = "PC MINOR ACTIONS"
-      for (let key in referenceSheets.pcMinorActions) {
-        embed.fields.push({
-          name: key,
-          value: referenceSheets.pcMinorActions[key],
-        })
-      }
-    } else if (option == "actions") {
-      embed.title = "PC ACTIONS"
-      for (let key in referenceSheets.pcActions) {
-        embed.fields.push({
-          name: key,
-          value: referenceSheets.pcActions[key],
-        })
-      }
-    } else if (option === "attack properties") {
-      embed.title = "PC ATTACK PROPERTIES"
-      for (let key in referenceSheets.pcAttackProperties) {
-        embed.fields.push({
-          name: key,
-          value: referenceSheets.pcAttackProperties[key],
-        })
-      }
-    } else {
-      embed.title = option.toUpperCase()
-      embed.description =
-        referenceSheets.pcMinorActions[embed.title] ||
-        referenceSheets.pcActions[embed.title]
-    }
-
-    return embed
-  },
-  buildShipMsg(option) {
-    const embed = {
-      title: "",
-      description: "",
-      fields: [],
-    }
-
-    if (option === "minor actions") {
-      embed.title = "SHIP MINOR ACTIONS"
-      for (let key in referenceSheets.shipMinorActions) {
-        embed.fields.push({
-          name: key,
-          value: referenceSheets.shipMinorActions[key],
-        })
-      }
-    } else if (option == "actions") {
-      embed.title = "SHIP ACTIONS OVERVIEW"
-      embed.description = "Available ship actions by station."
-      for (let key in referenceSheets.shipActionsOverview) {
-        embed.fields.push({
-          name: key,
-          value: referenceSheets.shipActionsOverview[key],
-        })
-      }
-    } else if (option === "attack properties") {
-      embed.title = "SHIP ATTACK PROPERTIES"
-      for (let key in referenceSheets.shipAttackProperties) {
-        embed.fields.push({
-          name: key,
-          value: referenceSheets.shipAttackProperties[key],
-        })
-      }
-    } else {
-      embed.title = option.toUpperCase()
-      const shipActionsCategory =
-        referenceSheets.shipActionsOverview[embed.title]
-      if (shipActionsCategory) {
-        embed.title = `SHIP ACTIONS - ${option.toUpperCase()}`
-        const actions = shipActionsCategory.toString().split(", ")
-        for (let i in actions) {
-          const actionName = actions[i].toUpperCase()
-          embed.fields.push({
-            name: actionName,
-            value: referenceSheets.shipActions[actionName],
-          })
+    const game = config[guildData.game]
+    if (!game.dice[cmd]) {
+      msg.channel.send({ embed: {
+          title: `'${cmd}' is not a game specific command!`,
+          description: `d20, d6, ${Object.keys(game.dice).join(', ')} are valid commands.`
         }
-      } else {
-        embed.description = referenceSheets.shipMinorActions[embed.title]
-          || referenceSheets.shipActions[embed.title]
-
-        if (!embed.description) {
-          embed.title = "Help with !ship command"
-          embed.description = "!ship commands require an argument."
-          embed.fields.push({
-            name: "!ship actions",
-            value: "Lists the stations and the name of the actions that can be performed at that station.",
-          })
-          embed.fields.push({
-            name: "!ship minor actions",
-            value: "The minor actions the PC can perform.",
-          })
-          embed.fields.push({
-            name: "!ship [action or minor action or station]",
-            value: "Details of a ship action by name. See `!ship actions` or `!ship minor actions` for possible actions.",
-          })
-          embed.fields.push({
-            name: "!ship actions",
-            value: "Attack properties of a ship attack.",
-          })
-        }
-      }
-    }
-
-    return embed
-  },
-  buildDeterminationMsg() {
-    const embed = {
-      title: "DETERMINATION SPENDS",
-      fields: [],
-    }
-
-    const determinationSpends = referenceSheets.determination
-    for (let key in determinationSpends) {
-      embed.fields.push({
-        name: key,
-        value: determinationSpends[key],
       })
+
+      return
+    }
+
+    const customCmd = game.dice[cmd];
+    const embed = {
+      title: msg.author.username,
+      thumbnail: {
+        url: game.images.d20,
+      },
+      fields: [
+        {
+          name: customCmd.display,
+          value: utils.randomElement(customCmd.values),
+        }
+      ],
     }
 
     console.warn(embed)
-    return embed
-  },
-  buildMomentumMsg() {
-    const embed = {
-      title: "MOMENTUM SPENDS",
-      fields: [],
-    }
-
-    const momentumSpends = referenceSheets.momentum
-    for (let key in momentumSpends) {
-      embed.fields.push({
-        name: key,
-        value: momentumSpends[key],
-      })
-    }
-
-    console.warn(embed)
-    return embed
-  },
-  buildGeneratedAlienMsg() {
-    const embed = {
-      title: "GENERATED ALIEN",
-      fields: [],
-    }
-
-    let alien = alienGenerator.alien()
-    for (let key in alien) {
-      if (key !== "Traits") {
-        embed.fields.push({
-          name: key,
-          value: alien[key],
-        })
-      } else {
-        embed.fields.push({
-          name: "Trait - " + alien[key].name,
-          value: alien[key].description,
-          inline: true,
-        })
-      }
-    }
-
-    return embed
-  },
+    msg.channel.send({ embed })
+  }
 }

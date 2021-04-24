@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-const { redis } = require("./redis")
+const { getGuildData, setGuildData } = require("./redis")
 
 // It's a key-value store within a container. Keys are traits for the end user.
 // trait structure:
@@ -53,6 +53,14 @@ function dumpTraits(container, embed) {
     }
 }
 
+function verifyTraits(guildData) {
+    if (!guildData.traits) {
+        guildData.traits = {}
+    }
+
+    return guildData
+}
+
 module.exports = {
     async trait(msg, option) {
         const guildId = msg.guild.id.toString()
@@ -60,19 +68,8 @@ module.exports = {
         console.warn("guild id", guildId)
         console.warn("options", option)
 
-        let guildData = await redis.get(guildId)
-        if (guildData) {
-            guildData = JSON.parse(guildData)
-        }
-
-        console.warn("get redis", guildId, guildData)
-        if (!guildData) {
-            guildData = {}
-        }
-
-        if (!guildData.traits) {
-            guildData.traits = {}
-        }
+        let guildData = await getGuildData(guildId)
+        guildData = verifyTraits(guildData)
 
         const embed = {
             title: "Traits",
@@ -156,7 +153,7 @@ module.exports = {
 
         console.warn("Guild data:", guildData)
 
-        await redis.set(guildId, JSON.stringify(guildData))
+        await setGuildData(guildId, guildData)
         return embed
     }
 }

@@ -37,6 +37,25 @@ redis.on("ready", () => {
   console.log("Redis client ready.")
 })
 
+async function getGuildData(guildId) {
+  let guildData = await redis.get(guildId)
+  if (guildData) {
+    guildData = JSON.parse(guildData)
+  }
+
+  console.warn("get redis", guildId, guildData)
+  if (!guildData) {
+    guildData = {}
+  }
+
+  return guildData
+}
+
+async function setGuildData(guildId, guildData) {
+  await redis.set(guildId, JSON.stringify(guildData))
+}
+
 module.exports = {
-    redis
+    getGuildData,
+    setGuildData
 }

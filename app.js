@@ -23,37 +23,29 @@ const Discord = require("discord.js")
 const winston = require("winston")
 const fs = require("fs")
 const utils = require("./utils")
-const referenceSheets = require("./referenceSheets")
 const msgBuilder = require("./messageBuilder")
 const pool = require("./pool")
+const { getGuildData, setGuildData } = require("./redis")
 const trait = require("./trait")
+const config = require("./config")
+const messageBuilder = require("./messageBuilder")
 require("dotenv").config()
-
-referenceSheets.loadReferenceSheets()
 
 // help content
 let help1 = fs.readFileSync("./data/help1.txt", { encoding: "utf8" })
 let help2 = fs.readFileSync("./data/help2.txt", { encoding: "utf8" })
 let about = fs.readFileSync("./data/about.txt", { encoding: "utf8" })
-let supporthelp = fs.readFileSync("./data/supporthelp.txt", { encoding: "utf8" })
 
 let overflow = (help1.length > 2000) || (help2.length > 2000)
-overflow = overflow || (about.length > 2000) || (supporthelp.length > 2000)
+overflow = overflow || (about.length > 2000)
 if (overflow) {
   console.warn("At least one of the help files is longer than 2000 symbols and will be rejected by Discord")
 }
 
 let addMeMsg =
-  "https://discordapp.com/api/oauth2/authorize?client_id=538555398521618432&permissions=51200&scope=bot"
+  "https://discordapp.com/api/oauth2/authorize?client_id=831001838971125760&permissions=51200&scope=bot"
 
 const CommandPrefix = process.env.prefix
-if (CommandPrefix === "/") {
-  help1 = help1.split("!").join("/")
-  help2 = help2.split("!").join("/")
-  supporthelp = supporthelp.split("!").join("/")
-  addMeMsg =
-    "https://discordapp.com/api/oauth2/authorize?client_id=729181873024139294&permissions=51200&scope=bot"
-}
 
 //Configure logger settings
 const logger = winston.createLogger({
@@ -65,9 +57,65 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 })
 
-const betaTesters = process.env.beta_testers
-  ? process.env.beta_testers.split(",")
-  : []
+async function setGame(guildId, game) {
+  const guildData = await getGuildData(guildId)
+  if (game === 'help' && guildData.game) {
+    const diceCmds = config[guildData.game].dice;
+    const keys = Object.keys(diceCmds)
+    let supportedCustomCmds = ''
+    for (let key of keys) {
+      if (!supportedCustomCmds) {
+        supportedCustomCmds += '\n'
+      }
+
+      supportedCustomCmds += `!${key} - ${diceCmds[key].display}`
+    }
+
+    return supportedCustomCmds || `No custom commands avaialble for ${config[guildData.game].display}`
+  }
+
+  if (!config[game]) {
+    const keys = Object.keys(config)
+    let supportedGames = ''
+    for (let key of keys) {
+      if (supportedGames) {
+        supportedGames += '\n'
+      }
+
+      supportedGames += `${key} - ${config[key].display}`
+    }
+
+    if (game === 'list') {
+      return supportedGames
+    }
+
+    return `'${game}' not supported!\n${supportedGames}`
+  }
+
+  guildData.game = game;
+
+  await setGuildData(guildId, guildData)
+
+  return `Game is now set to ${config[game].display}`
+}
+
+async function getGame(guildId) {
+  const guildData = await getGuildData(guildId)
+  if (!guildData.game) {
+    const keys = Object.keys(config)
+    let supportedGames = ''
+    for (let key of keys) {
+      if (supportedGames) {
+        supportedGames += '\n'
+      }
+
+      supportedGames += `${key} - ${config[key].display}`
+    }
+    return `Game not set!\nSupported Games\n${supportedGames}`
+  }
+
+  return `Game is set to ${config[guildData.game].display}`
+}
 
 // Initialize Discord Bot
 const bot = new Discord.Client()
@@ -78,11 +126,12 @@ bot.on("ready", (evt) => {
   logger.info("Connected")
   logger.info("Logged in as: ")
   logger.info(bot.user.username + " - (" + bot.user.id + ")")
+  logger.info(config)
 })
 
 bot.on("message", async (message) => {
-  if (message.author.username.indexOf("Majel") > -1) {
-    console.log("Preventing Majel from spamming.")
+  if (message.author.username.indexOf("2d20") > -1) {
+    console.log("Preventing 2d20 from spamming.")
     return
   }
 
@@ -96,99 +145,58 @@ bot.on("message", async (message) => {
       let args = message.content.substring(1).split(" ")
       let cmd = args[0]
       args = args.splice(1)
+
       let isD6 = cmd.indexOf("d6") > -1
       let isD20 = cmd.indexOf("d20") > -1
       if (isD6) {
-        msgBuilder.buildD6Msg(cmd, message)
-        return
+        await msgBuilder.buildD6Msg(cmd, message)
       } else if (isD20) {
-        msgBuilder.buildD20msg(cmd, args, message)
-        return
+        await msgBuilder.buildD20msg(cmd, args, message)
+      } else {
+        let option = args.length > 0 ? args.join(" ").toLowerCase() : ""
+        switch (cmd) {
+          case "help":
+            message.channel.send(help1)
+            message.channel.send(help2)
+            return
+          case "about":
+            message.channel.send(about)
+            return
+          case "addme":
+            msg = addMeMsg
+            break
+          case "pool":
+            embed = await pool.status(message, option)
+            break
+          case "m":
+            embed = await pool.adjustMomentum(message, option)
+            break
+          case "t":
+            embed = await pool.adjustThreat(message, option)
+            break
+          case "trait":
+            embed = await trait.trait(message, option)
+            break
+          case "trait":
+            embed = await trait.trait(message, option)
+            break
+          case "game":
+            const guildId = message.guild.id.toString()
+            if (option) {
+              msg = await setGame(guildId, option)
+            } else {
+              msg = await getGame(guildId)
+            }
+            break
+          default:
+            messageBuilder.buildCustomRollMsg(cmd, args, message)
+        }
+        if (msg) {
+          message.channel.send(msg)
+        } else if (embed) {
+          message.channel.send({ embed })
+        }
       }
-
-      let option = args.length > 0 ? args.join(" ").toLowerCase() : ""
-      switch (cmd) {
-        case "help":
-          message.channel.send(help1)
-          message.channel.send(help2)
-          return
-        case "about":
-          message.channel.send(about)
-          return
-        case "support":
-          if (option.includes("list")) {
-            msg = "Supported species: " + utils.listSpecies()
-            msg += "\n"
-            msg += "Supported sources: " + utils.listSpeciesSources()
-          } else if (option.includes("help")) {
-            message.channel.send(supporthelp)
-          } else {
-            embed = utils.generateSupportCharacter()
-          }
-          break
-        // !babble
-        case "babble":
-          msg =  `${message.author} Technobabble generated. Check your DM.`
-          message.author.send(referenceSheets.generateTechnobabble())
-          break
-        case "medbabble":
-          msg = `${message.author} Medical babble generated. Check your DM.`
-          message.author.send(referenceSheets.generateMedbabble())
-          break
-        case "pc":
-          embed = msgBuilder.buildPCMsg(option)
-          break
-        case "ship":
-          embed = msgBuilder.buildShipMsg(option)
-          break
-        case "determination":
-          embed = msgBuilder.buildDeterminationMsg()
-          break
-        case "momentum":
-          embed = msgBuilder.buildMomentumMsg()
-          break
-        case "alien":
-          embed = msgBuilder.buildGeneratedAlienMsg()
-          break
-        case "addme":
-          msg = addMeMsg
-          break
-        case "pool":
-          embed = await pool.status(message, option)
-          break
-        case "m":
-          embed = await pool.adjustMomentum(message, option)
-          break
-        case "t":
-          embed = await pool.adjustThreat(message, option)
-          break
-        case "beta":
-        case "trait":
-          embed = await trait.trait(message, option)
-          break
-          if (betaTesters.includes(message.guild.id.toString())) {
-            msg = "You have access to the beta features."
-          } else {
-            msg = "You don't have access to the beta features."
-          }
-          break
-        default:
-          // if (betaTesters.includes(message.guild.id.toString())) {
-          //   switch (cmd) {
-          //     default:
-          //       msg = `Didn't recognize '${cmd}' please type !help for supported commands.`
-          //   }
-          // } else {
-          //   msg = `Didn't recognize '${cmd}' please type !help for supported commands.`
-          // }
-          msg = `Didn't recognize '${cmd}' please type !help for supported commands.`
-      }
-    }
-
-    if (msg) {
-      message.channel.send(msg)
-    } else if (embed) {
-      message.channel.send({ embed })
     }
   } catch (error) {
     console.error(error)

@@ -19,7 +19,30 @@
  * IN THE SOFTWARE.
  */
 
-const { redis } = require("./redis")
+const { getGuildData, setGuildData } = require("./redis")
+
+function verifyGlobalPool(guildData) {
+  if (!guildData.global) {
+    guildData.global = {
+      momentum: 0,
+      threat: 0,
+    }
+  }
+
+  return guildData
+}
+
+function verifyChannelPool(guildData, channelId) {
+  if (!guildData[channelId]) {
+    guildData[channelId] = {
+      momentum: 0,
+      threat: 0,
+      name: msg.channel.name,
+    }
+  }
+
+  return guildData
+}
 
 module.exports = {
   async status(msg, option) {
@@ -30,21 +53,8 @@ module.exports = {
     console.warn("guild id", guildId)
     console.warn("channel id", channelId)
 
-    let guildData = await redis.get(guildId)
-    if (guildData) {
-      guildData = JSON.parse(guildData)
-    }
-
-    console.warn("get redis", guildId, guildData)
-    if (!guildData || !guildData.global) {
-      console.warn("fixing guildData")
-      guildData = {
-        global: {
-          momentum: 0,
-          threat: 0,
-        },
-      }
-    }
+    let guildData = await getGuildData(guildId)
+    guildData = verifyGlobalPool(guildData)
 
     const global = guildData.global
     // making sure global is always first to be displayed
@@ -109,38 +119,17 @@ module.exports = {
       }
     }
 
-
     console.warn("set redis", guildData)
-    await redis.set(guildId, JSON.stringify(guildData))
+    await setGuildData(guildId, guildData)
     return embed
   },
   async adjustMomentum(msg, option) {
     const guildId = msg.guild.id.toString()
     const channelId = msg.channel.id.toString()
 
-    let guildData = await redis.get(guildId)
-    if (guildData) {
-      guildData = JSON.parse(guildData)
-    }
-
-    console.warn("get redis", guildId, guildData)
-    if (!guildData || !guildData.global) {
-      console.warn("fixing guildData")
-      guildData = {
-        global: {
-          momentum: 0,
-          threat: 0,
-        },
-      }
-    }
-
-    if (!guildData[channelId]) {
-      guildData[channelId] = {
-        momentum: 0,
-        threat: 0,
-        name: msg.channel.name,
-      }
-    }
+    let guildData = await getGuildData(guildId)
+    guildData = verifyGlobalPool(guildData)
+    guildData = verifyChannelPool(guildData, channelId)
 
     const options = option.split(" ")
 
@@ -190,38 +179,17 @@ module.exports = {
       ],
     }
 
-
     console.warn("redis set", guildId, guildData)
-    await redis.set(guildId, JSON.stringify(guildData))
+    await setGuildData(guildId, guildData)
     return embed
   },
   async adjustThreat(msg, option) {
     const guildId = msg.guild.id.toString()
     const channelId = msg.channel.id.toString()
 
-    let guildData = await redis.get(guildId)
-    if (guildData) {
-      guildData = JSON.parse(guildData)
-    }
-
-    console.warn("get redis", guildId, guildData)
-    if (!guildData || !guildData.global) {
-      console.warn("fixing guildData")
-      guildData = {
-        global: {
-          momentum: 0,
-          threat: 0,
-        },
-      }
-    }
-
-    if (!guildData[channelId]) {
-      guildData[channelId] = {
-        momentum: 0,
-        threat: 0,
-        name: msg.channel.name,
-      }
-    }
+    let guildData = await getGuildData(guildId)
+    guildData = verifyGlobalPool(guildData)
+    guildData = verifyChannelPool(guildData, channelId)
 
     const options = option.split(" ")
 
@@ -271,8 +239,7 @@ module.exports = {
       ],
     }
 
-
-    await redis.set(guildId, JSON.stringify(guildData))
+    await setGuildData(guildId, guildData)
     return embed
   },
 }
