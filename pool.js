@@ -32,12 +32,12 @@ function verifyGlobalPool(guildData) {
   return guildData
 }
 
-function verifyChannelPool(guildData, channelId) {
+function verifyChannelPool(guildData, channelId, name) {
   if (!guildData[channelId]) {
     guildData[channelId] = {
       momentum: 0,
       threat: 0,
-      name: msg.channel.name,
+      name,
     }
   }
 
@@ -129,7 +129,7 @@ module.exports = {
 
     let guildData = await getGuildData(guildId)
     guildData = verifyGlobalPool(guildData)
-    guildData = verifyChannelPool(guildData, channelId)
+    guildData = verifyChannelPool(guildData, channelId, msg.channel.name)
 
     const options = option.split(" ")
 
@@ -189,7 +189,7 @@ module.exports = {
 
     let guildData = await getGuildData(guildId)
     guildData = verifyGlobalPool(guildData)
-    guildData = verifyChannelPool(guildData, channelId)
+    guildData = verifyChannelPool(guildData, channelId, msg.channel.name)
 
     const options = option.split(" ")
 
